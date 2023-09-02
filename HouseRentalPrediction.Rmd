@@ -1,0 +1,367 @@
+---
+title: "HouseRentalPrediction"
+GroupNumber: "Group-9"
+output: word_document
+date: "2022-12-09"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Loading Packages----
+```{r}
+library(tidyr)
+library(dplyr)
+library(tidyverse)
+# for using clean name function
+library(janitor)
+library(readr)
+library(ggplot2)
+library(corrplot)
+library(mlbench)
+library(Amelia)
+library(plotly)
+library(reshape2)
+library(caret)
+library(caTools)
+library(naniar)
+library(ggpubr)
+library(plotrix)
+
+# Import data into R---------
+# the dataset is in the csv format which is being imported and stored in the variable House_Data
+House_Data <-
+  read.csv("/Users/vedhanreddyg/Downloads/House_Rent_Dataset.csv", stringsAsFactors = TRUE)
+
+```
+# About HouseRentalData----
+Real estate is one of the most important assets in today's world, especially in a city where there are potential job hubs that attract a lot of individuals. The primary goal of this project is to estimate the housing market's current price. While doing so, considerations like the number of bedrooms and the availability of other amenities are made. This prediction is meant to assist a customer in finding solutions that are more practical and better meet their needs. To estimate the cost of the various houses in question, we employed a linear regression model. This technique saves the customer from having to speak with a broker, which is another benefit. 
+
+# Loadin Data in R----
+```{r}
+#Load Data
+House_Data <-
+  read.csv("/Users/vedhanreddyg/Downloads/House_Rent_Dataset.csv", stringsAsFactors = TRUE)
+dim(House_Data)
+```
+
+# Including Plots for check the missing data----
+```{r echo=TRUE}
+missmap(
+  House_Data,
+  col = c('yellow', 'black'),
+  y.at = 1,
+  y.labels = '',
+  legend = TRUE
+)
+```
+# Observation 
+We have all observations and no missing data.
+
+# Including Plots for missing data----
+```{r echo=TRUE}
+vis_miss(House_Data)
+gg_miss_var(House_Data) + theme_dark()
+```
+#qqnorm plot for Rent----
+```{r echo=TRUE}
+qqnorm(House_Data$Rent,
+       pch = 1,
+       frame = FALSE,
+       main = "Rent")
+qqline(House_Data$Rent, col = "steelblue", lwd = 2)
+```
+# Density plot for Rent vs City----
+```{r echo=TRUE}
+ggplot(House_Data,                              
+       aes(x = Rent,
+           fill = City)) +
+  geom_density(alpha = 0.5) +
+  theme_dark()
+```
+# The scatter plot displays the price of houses in various cities----
+```{r echo=TRUE}
+g <- ggscatter(
+  House_Data,
+  x = "City",
+  y = "Rent",
+  add = "reg.line",
+  conf.int = TRUE,
+  cor.coef = TRUE,
+  cor.method = "pearson",
+  xlab = "City",
+  ylab = "Rent"
+)
+require(scales)
+g + scale_y_continuous(
+  labels = function(x)
+    format(x, scientific = FALSE)
+)
+```
+# Observation
+We find price of Houses in Mumbai are expensive when compared to other cities. similarly Kolkata has the lesser prices compared to other cities.
+
+# Checking Mean, Median, Maximum & Minimum House Rents ----
+```{r echo=TRUE}
+min(House_Data$Rent, na.rm = TRUE)
+max(House_Data$Rent, na.rm = TRUE)
+avg_rent<-mean(House_Data$Rent, na.rm = TRUE)
+print(avg_rent)
+median(House_Data$Rent, na.rm = TRUE)
+```
+# Observation
+We found minimum rent is 1200 and the maximum is 3500000.
+
+# Highest and lowest House Rents present in the Dataset ----
+```{r echo=TRUE}
+head(sort(House_Data$Rent, decreasing = TRUE), n = 5)
+
+#5 Lowest House Rents present in the Dataset ----
+head(sort(House_Data$Rent), n = 5)
+```
+# Bar Plot for Number of House in Each City which is Available for Rent ----
+```{r echo=TRUE}
+ggplot(House_Data) +
+  geom_bar(aes(x = City, color = "black"))
+```
+# Observation
+We found Mumbai has higher number of Houses for renting, Similarly kolkata has lower number of houses for renting.
+
+# Scatter Plot for Rent and Size in Each City which is Available for Rent ----
+```{r echo=TRUE}
+ggplot(House_Data,aes(x = Rent, y = Size,color = "black",scientific = FALSE)) +
+         geom_point()
+```
+# Bar Plot on Different Types of Furnishing Status ----
+```{r echo=TRUE}
+ggplot(House_Data) +
+  geom_bar(aes(x = Furnishing.Status, color = "orange"))
+```
+# Observation
+We have houses with semi-furnished available more compared to unfurnished and furnished.
+
+# Scatter Plot on House Rents vs House Sizes ----
+```{r echo=TRUE}
+p <- ggplot(House_Data) +
+  geom_point(aes(x = Size, y = Rent, scientific = FALSE))
+require(scales)
+p + scale_y_continuous(
+  labels = function(x)
+    format(x, scientific = FALSE)
+)
+```
+# Bar Plot for City vs House Rent ----
+```{r echo=TRUE}
+b <- ggplot(House_Data, aes(x = City, y = Rent)) +
+  geom_bar(stat = "identity")
+b + scale_y_continuous(
+  labels = function(x)
+    format(x, scientific = FALSE)
+)
+```
+# Distribution of different number of BHK available in the Dataset ----
+```{r echo=TRUE}
+ggplot(House_Data) +
+  geom_bar(aes(x = BHK, color = "orange"))
+```
+# Observation
+We have more number of 2 BHK available.
+
+# Heatmap on Heatmap on BHK vs Area Type ----
+```{r echo=TRUE}
+ggplot(House_Data, aes(BHK,Area.Type)) +
+  geom_raster(aes(fill = Area.Type))
+```
+# Boxplot for Effect of Furnishing Status on Rent ----
+```{r echo=TRUE}
+boxplot(House_Data$Furnishing.Status, main = "Effect of Furnishing Status on Rent",
+        xlab = "Rent", ylab = "Furnishing_Status",
+        col = "orange", border = "brown",
+        horizontal = TRUE, notch = TRUE)
+```
+# Finding the correlation Between BHK, Rent and Size ----
+This will demonstrate the relationships between several factors.
+Correlation matrix computation goals include:
+To compile a lot of data with the intention of finding patterns.
+The observable pattern in the prescriptive is that all the variables have a strong correlation with one another.
+```{r echo=TRUE}
+
+correlation_df<-cor(House_Data[,2:4,12],
+                    House_Data[,2:4,12], method="kendall", use="pairwise.complete.obs")
+# graph correlation specific columns
+corrplot(correlation_df,
+         method="color", addCoef.col = "black")
+```
+#Correlation plot for BHK Rent Size and Bathroom -----
+```{r echo=TRUE}
+cor_matrix <- cor(House_Data[, c(2, 3, 4, 11)])
+cor_matrix
+corrplot(cor_matrix, addCoef.col = TRUE)
+set.seed(123)
+```
+# graph correlation specific columns ----
+```{r echo=TRUE}
+slices <- c(2,3,4,5,10,6,7,8,9)
+lbls <- c('Rent','Size','Floor',' Tenant','Area','City','Furnishing')
+pct <- round(slices/sum(slices)*100)
+lbls <- paste(lbls, pct)
+lbls <- paste(lbls,"%",sep=" ") 
+pie3D(slices,labels = lbls,
+      main="Pie Chart of House Rent")
+```
+# Histogram that shows the relationship between Size and Rent----
+```{r echo=TRUE}
+house_histogram <- c()
+dim(House_Data)
+summary(House_Data)
+for (b in 1:2000) {
+  samp_b <- sample.int(nrow(House_Data), replace = TRUE)
+  muhat_b <- mean(House_Data$Size[samp_b])
+  house_histogram <- c(house_histogram, muhat_b)
+}
+hist(house_histogram,
+     main = "",
+     xlab = "Size",
+     ylab = "Rent")
+str(House_Data$Size)
+```
+
+#Histogram on House Sizes ----
+```{r echo=TRUE}
+hist(House_Data$Size, xlab = "Size in Sqft")
+```
+# Now after EDA we got a clear idea of dataset. Rent,Size,Bathroom are having a great correlation between them.Now we run the models for House Rental Prediction.
+
+# Running Linear Regression Model----
+```{r echo=TRUE}
+split <- sample.split(House_Data, SplitRatio = 0.80)
+train <- subset(House_Data, split == TRUE)
+dim(train)
+
+test <- subset(House_Data, split == FALSE)
+dim(test)
+### Training to the model
+model <-
+  lm(
+    Rent ~ BHK + Size  + City + Furnishing.Status + Tenant.Preferred + Bathroom + Point.of.Contact,
+    data = train
+  )
+summary(model)
+
+res <- residuals(model)
+res <- as.data.frame(res)
+head(res)
+# Histogram plot for the model -----
+ggplot(res, aes(res)) +  geom_histogram(fill = 'red', alpha = 0.6)
+plot(model)
+
+
+test$predicted_rent <- predict(model, test)
+head(test)
+
+plot1 <- test %>%
+  ggplot(aes(Rent, predicted_rent)) +
+  geom_point(alpha = 0.5) +
+  stat_smooth(aes(colour = 'black')) +
+  xlab('Actual value of Rent ') +
+  ylab('Predicted value of Rent') +
+  theme_bw()
+
+ggplotly(plot1)
+
+##Assesing the model -------
+regressionMetrics <- function(real, predicted) {
+  real = test$Rent
+  predicted = test$predicted_rent
+  # Mean Square Error
+  MSE <- mean((real - predicted) ^ 2)
+  # Root Mean Square Error
+  RMSE <- sqrt(MSE)
+  # Mean Absolute Error
+  MAE <- mean(abs(real - predicted))
+  # Median Absolute Error
+  MedAE <- median(abs(real - predicted))
+  # Mean Logarithmic Absolute Error
+  MSLE <- mean((log(1 + real) - log(1 + predicted)) ^ 2)
+  # Total Sum of Squares
+  TSS <- sum((real - mean(real)) ^ 2)
+  # Explained Sum of Squares
+  RSS <- sum((predicted - real) ^ 2)
+  # R2
+  R2 <- 1 - RSS / TSS
+  
+  result <- data.frame(MSE, RMSE, MAE, MedAE, MSLE, R2)
+  return(result)
+}
+print(regressionMetrics())
+
+#Linear Regression 
+train.control <- trainControl(method = "cv", number = 5)
+set.seed(987654321)
+lmModellog <- train(
+  log(Rent + 1) ~ .,
+  data = House_Data %>%
+    dplyr::select(-BHK,-Size,-Bathroom),
+  method  = "lm",
+  trControl = train.control
+)
+lmModellog %>% summary
+plot(lmModellog)
+
+```
+# KNN Classification----
+```{r echo=TRUE}
+train.control <- trainControl(method = "cv", number = 5)
+different_k <- data.frame(k = seq(1, 99, 4))
+set.seed(987654321)
+knnmodellog <-
+  train(
+    log(Rent + 1) ~ .,
+    data = House_Data %>%
+      dplyr::select(-BHK,-Size,-Bathroom),
+    method = "knn",
+    trControl = train.control,
+    tuneGrid = different_k
+  )
+knnmodellog
+plot(knnmodellog)
+```
+# Random Forest Model----
+```{r echo=TRUE}
+train.control <- trainControl(method = "cv", number = 5)
+set.seed(987654321)
+RFmodel <- train(
+  log(Rent + 1) ~ .,
+  # tuneLength = tuneGrid,
+  data = House_Data %>%
+    dplyr::select(-BHK,-Size,-Bathroom),
+  method = "ranger",
+  trControl = train.control
+)
+RFmodel
+plot(RFmodel)
+```
+# Now After Running the Models we need to pick the model that is best suited for our Dataset. So we now Compare all the models for selecting the best model.
+```{r echo=TRUE}
+Models_forecastslog <-
+  data.frame(
+    Linear_Regression_Forecast = lmModellog_forecastLog,
+    Knn_Forecast = knnForecastlog,
+    RF_Forecast = model_predictlog
+  )
+sapply(Models_forecastslog,
+       function(x)
+         regressionMetrics(predicted = x,
+                           real = log(House_Data$Rent + 1))) %>%
+  t()
+
+modelList <- list(RFmodel = RFmodel,
+                  knnmodellog = knnmodellog,
+                  lmModellog = lmModellog)
+resamples <- resamples(modelList)
+summary(resamples)
+bwplot(resamples, metric = "RMSE")
+```
+# Observations 
+We found that Random Forest is the best model in predicting the House prices of the data set when compared to all other models we ran on our House Rental data set.
